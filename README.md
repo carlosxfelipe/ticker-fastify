@@ -26,6 +26,8 @@ npm test
 
 O servidor estará disponível em `http://localhost:3000`
 
+**📚 Documentação da API (Swagger)**: `http://localhost:3000/docs`
+
 ### Credenciais de teste
 
 - **Email**: carlos@email.com

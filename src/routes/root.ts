@@ -1,4 +1,10 @@
 import { FastifyPluginAsync } from "fastify";
+import {
+  portfolioResponseSchema,
+  errorResponseSchema,
+  tags,
+  securitySchema,
+} from "../schemas";
 
 type AssetRow = {
   id: number;
@@ -13,7 +19,18 @@ const root: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   // GET / - Portfolio home
   fastify.get(
     "/",
-    { preHandler: fastify.authenticate },
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        tags: tags.portfolio,
+        description: "Obter visão geral do portfolio (dados para gráfico)",
+        security: securitySchema,
+        response: {
+          200: portfolioResponseSchema,
+          401: errorResponseSchema,
+        },
+      },
+    },
     async function (request, reply) {
       if (!request.user) {
         return reply.code(401).send({

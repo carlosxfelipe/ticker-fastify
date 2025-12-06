@@ -1,4 +1,10 @@
 import { FastifyPluginAsync } from "fastify";
+import {
+  assetSchema,
+  errorResponseSchema,
+  tags,
+  securitySchema,
+} from "../../schemas";
 
 type AssetRow = {
   id: number;
@@ -23,7 +29,11 @@ type CreateAssetBody = {
   current_price?: number | null;
 };
 
-type UpdateAssetBody = CreateAssetBody;
+type EditAssetBody = CreateAssetBody;
+
+type EditParams = {
+  id: string;
+};
 
 const managerRoutes: FastifyPluginAsync = async (fastify) => {
   const formatTicker = (ticker: string) => ticker.toUpperCase();
@@ -52,7 +62,22 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /manager/
   fastify.get(
     "/",
-    { preHandler: fastify.authenticate },
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        tags: tags.assets,
+        description:
+          "Listar todos os assets do usuário com métricas calculadas",
+        security: securitySchema,
+        response: {
+          200: {
+            type: "array",
+            items: assetSchema,
+          },
+          401: errorResponseSchema,
+        },
+      },
+    },
     async (request, reply) => {
       if (!request.user) {
         return reply.code(401).send({ message: "Não autorizado" });
@@ -75,17 +100,28 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
     {
       preHandler: fastify.authenticate,
       schema: {
+        tags: tags.assets,
+        description: "Criar novo asset (ticker será convertido para maiúscula)",
+        security: securitySchema,
         body: {
           type: "object",
           required: ["ticker", "quantity", "average_price"],
           properties: {
-            ticker: { type: "string", maxLength: 20 },
+            ticker: {
+              type: "string",
+              maxLength: 20,
+              description: "Código do ativo",
+            },
             quantity: { type: "integer", minimum: 0 },
             average_price: { type: "number", minimum: 0 },
             current_price: {
               anyOf: [{ type: "number", minimum: 0 }, { type: "null" }],
             },
           },
+        },
+        response: {
+          201: assetSchema,
+          401: errorResponseSchema,
         },
       },
     },
@@ -127,7 +163,26 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /manager/edit/:id
   fastify.get<{ Params: { id: string } }>(
     "/edit/:id",
-    { preHandler: fastify.authenticate },
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        tags: tags.assets,
+        description: "Obter asset específico para edição",
+        security: securitySchema,
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+          },
+        },
+        response: {
+          200: assetSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
     async (request, reply) => {
       if (!request.user) {
         return reply.code(401).send({ message: "Não autorizado" });
@@ -149,11 +204,20 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /manager/edit/:id
-  fastify.post<{ Params: { id: string }; Body: UpdateAssetBody }>(
+  fastify.post<{ Params: EditParams; Body: EditAssetBody }>(
     "/edit/:id",
     {
       preHandler: fastify.authenticate,
       schema: {
+        tags: tags.assets,
+        description: "Atualizar asset existente",
+        security: securitySchema,
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "number" },
+          },
+        },
         body: {
           type: "object",
           required: ["ticker", "quantity", "average_price"],
@@ -165,6 +229,12 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
               anyOf: [{ type: "number", minimum: 0 }, { type: "null" }],
             },
           },
+        },
+        response: {
+          200: assetSchema,
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
         },
       },
     },
@@ -213,9 +283,33 @@ const managerRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // POST /manager/delete/:id
-  fastify.post<{ Params: { id: string } }>(
+  fastify.post<{ Params: EditParams }>(
     "/delete/:id",
-    { preHandler: fastify.authenticate },
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        tags: tags.assets,
+        description: "Deletar asset",
+        security: securitySchema,
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+          },
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              message: { type: "string" },
+            },
+          },
+          401: errorResponseSchema,
+          403: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
     async (request, reply) => {
       if (!request.user) {
         return reply.code(401).send({ message: "Não autorizado" });

@@ -1,5 +1,13 @@
 import { FastifyPluginAsync } from "fastify";
 import { hash, compare } from "bcryptjs";
+import {
+  authResponseSchema,
+  registerResponseSchema,
+  messageResponseSchema,
+  errorResponseSchema,
+  tags,
+  securitySchema,
+} from "../../schemas";
 
 type UserRow = {
   id: number;
@@ -29,6 +37,8 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     "/register/",
     {
       schema: {
+        tags: tags.accounts,
+        description: "Registrar novo usuário",
         body: {
           type: "object",
           required: ["email", "password"],
@@ -36,6 +46,10 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
             email: { type: "string", format: "email" },
             password: { type: "string", minLength: 6 },
           },
+        },
+        response: {
+          201: registerResponseSchema,
+          400: errorResponseSchema,
         },
       },
     },
@@ -77,13 +91,19 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     "/login/",
     {
       schema: {
+        tags: tags.accounts,
+        description: "Fazer login e obter token JWT",
         body: {
           type: "object",
           required: ["username", "password"],
           properties: {
-            username: { type: "string" },
+            username: { type: "string", description: "Email do usuário" },
             password: { type: "string" },
           },
+        },
+        response: {
+          200: authResponseSchema,
+          401: errorResponseSchema,
         },
       },
     },
@@ -117,7 +137,17 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /accounts/logout/
   fastify.post(
     "/logout/",
-    { preHandler: fastify.authenticate },
+    {
+      preHandler: fastify.authenticate,
+      schema: {
+        tags: tags.accounts,
+        description: "Fazer logout (invalidar token no cliente)",
+        security: securitySchema,
+        response: {
+          200: messageResponseSchema,
+        },
+      },
+    },
     async (request, reply) => {
       // No JWT, logout é feito no cliente (remover token)
       return reply.send({ message: "Logout realizado com sucesso" });
@@ -130,6 +160,9 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
     {
       preHandler: fastify.authenticate,
       schema: {
+        tags: tags.accounts,
+        description: "Trocar senha do usuário autenticado",
+        security: securitySchema,
         body: {
           type: "object",
           required: ["old_password", "new_password"],
@@ -137,6 +170,12 @@ const accountsRoutes: FastifyPluginAsync = async (fastify) => {
             old_password: { type: "string" },
             new_password: { type: "string", minLength: 6 },
           },
+        },
+        response: {
+          200: messageResponseSchema,
+          400: errorResponseSchema,
+          401: errorResponseSchema,
+          404: errorResponseSchema,
         },
       },
     },
