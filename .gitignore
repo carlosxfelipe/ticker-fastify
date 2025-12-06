@@ -63,3 +63,9 @@ test/types/index.js
 
 # compiled app
 dist
+
+# database
+data/
+*.db
+*.db-shm
+*.db-wal
