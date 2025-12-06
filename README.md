@@ -40,16 +40,19 @@ src/
 ├── plugins/
 │   ├── 00-db.ts          # SQLite database setup
 │   ├── 01-auth.ts        # JWT authentication
-│   └── 02-cors.ts        # CORS configuration
+│   ├── 02-cors.ts        # CORS configuration
+│   └── 03-swagger.ts     # Swagger/OpenAPI documentation
 ├── routes/
 │   ├── accounts/         # Autenticação e gerenciamento de conta
 │   ├── manager/          # CRUD de assets
 │   ├── settings/         # Configurações de conta
 │   └── root.ts           # Portfolio home
+├── schemas.ts            # OpenAPI schemas compartilhados
 └── app.ts
 
 scripts/
-└── seed.ts               # Database seeding
+├── seed.ts               # Database seeding
+└── test-api.sh           # Script de testes da API
 ```
 
 ## 🔑 Autenticação
