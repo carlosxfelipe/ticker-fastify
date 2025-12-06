@@ -11,11 +11,17 @@ npm install
 # Popular banco de dados com dados de teste
 npm run seed
 
-# Iniciar servidor de desenvolvimento
+# Iniciar servidor de desenvolvimento (com watch mode)
 npm run dev
 
-# Ou apenas o servidor (sem watch)
+# Ou iniciar servidor sem watch (recomendado para testes)
+npm run start:dev
+
+# Build e produção
 npm start
+
+# Executar testes
+npm test
 ```
 
 O servidor estará disponível em `http://localhost:3000`
@@ -321,11 +327,12 @@ O projeto está pronto para deploy no Render, Fly.io ou similar. Certifique-se d
 
 ## 📚 Scripts Disponíveis
 
-- `npm start` - Inicia servidor de produção
-- `npm run dev` - Desenvolvimento com watch mode
+- `npm start` - Inicia servidor de produção (build + start)
+- `npm run dev` - Desenvolvimento com watch mode (recompila automaticamente)
+- `npm run start:dev` - Inicia servidor sem watch (ideal para testes com `./scripts/test-api.sh`)
 - `npm run build:ts` - Compila TypeScript
 - `npm run seed` - Popula banco com dados de teste
-- `npm test` - Executa testes
+- `npm test` - Executa testes unitários com cobertura
 
 ## 🤝 Contribuindo
 
