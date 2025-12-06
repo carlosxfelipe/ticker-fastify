@@ -44,7 +44,7 @@ const swaggerPlugin = fp(async (fastify) => {
       docExpansion: "list",
       deepLinking: true,
     },
-    staticCSP: true,
+    staticCSP: false, // Desabilita CSP restritivo para compatibilidade com Safari
   });
 });
 
