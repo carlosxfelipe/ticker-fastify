@@ -339,6 +339,57 @@ O projeto está pronto para deploy no Render, Fly.io ou similar. Certifique-se d
 - `npm run seed` - Popula banco com dados de teste
 - `npm test` - Executa testes unitários com cobertura
 
+## 🎨 Frontend
+
+O projeto inclui uma interface web completa na pasta `frontend/` para consumir a API.
+
+### Tecnologias
+
+- **HTMX 1.9.10** - Requisições AJAX declarativas
+- **Alpine.js 3.13.5** - Reatividade e gerenciamento de estado
+- **Chart.js 4.4.1** - Visualização de dados com gráficos
+- **chartjs-plugin-datalabels** - Labels nos gráficos
+- **CSS Vanilla** - Estilização com suporte a dark/light mode
+
+### Estrutura
+
+```
+frontend/
+├── index.html           # Landing page
+├── css/
+│   └── style.css       # Estilos globais com CSS variables
+├── js/
+│   ├── auth.js         # Autenticação JWT
+│   └── portfolio.js    # Inicialização de gráficos
+└── pages/
+    ├── login.html      # Login
+    ├── register.html   # Registro
+    ├── dashboard.html  # Dashboard com gráfico de pizza
+    ├── assets.html     # CRUD de ativos
+    └── settings.html   # Configurações da conta
+```
+
+### Como usar
+
+1. Inicie o backend:
+
+```bash
+npm run dev
+```
+
+2. Abra o arquivo `frontend/index.html` no navegador
+
+**Pronto!** O frontend está configurado para consumir `http://localhost:3000`
+
+### Funcionalidades
+
+- ✅ Autenticação com JWT (login/registro/logout)
+- ✅ Dashboard com gráfico de pizza mostrando distribuição do portfólio
+- ✅ CRUD completo de ativos
+- ✅ Alteração de senha e exclusão de conta
+- ✅ Suporte automático a dark/light mode
+- ✅ Design responsivo
+
 ## 🤝 Contribuindo
 
 1. Faça fork do projeto
