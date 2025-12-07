@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Ticker</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+</head>
+<body x-data="dashboardApp()" x-init="init()">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <h1>🎯 Ticker - Portfolio</h1>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="assets.html">Ativos</a>
+        <a href="settings.html">Configurações</a>
+        <button @click="logout()" class="btn btn-secondary btn-sm">Sair</button>
+      </nav>
+    </div>
+  </div>
+  
+  <div class="container">
+    <!-- Loading -->
+    <div x-show="loading" class="card">
+      <p>Carregando dados...</p>
+    </div>
+    
+    <!-- Error -->
+    <div x-show="error" class="alert alert-error">
+      <span x-text="error"></span>
+    </div>
+    
+    <!-- Stats Grid -->
+    <div x-show="!loading && !error && stats" class="grid grid-3">
+      <div class="card">
+        <h3 style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Total de Ativos</h3>
+        <p style="font-size: 2rem; font-weight: bold;" x-text="stats.totalAssets"></p>
+      </div>
+      
+      <div class="card">
+        <h3 style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Valor Total</h3>
+        <p style="font-size: 2rem; font-weight: bold; color: var(--success);" x-text="formatCurrency(stats.totalValue)"></p>
+      </div>
+      
+      <div class="card">
+        <h3 style="color: var(--text-light); font-size: 0.875rem; margin-bottom: 0.5rem;">Última Atualização</h3>
+        <p style="font-size: 1.25rem; font-weight: bold;" x-text="stats.lastUpdate"></p>
+      </div>
+    </div>
+    
+    <!-- Doughnut Chart - Distribuição por Ativo -->
+    <div x-show="!loading && !error && assetsData && assetsData.length > 0" class="card">
+      <h2 class="card-title">Distribuição do Portfolio por Ativo</h2>
+      <div style="max-width: 600px; margin: auto;">
+        <canvas id="doughnutChart"></canvas>
+      </div>
+    </div>
+    
+    <div x-show="!loading && !error && (!assetsData || assetsData.length === 0)" class="card">
+      <p style="text-align: center; color: var(--text-light);">
+        Nenhum ativo cadastrado. <a href="assets.html" style="color: var(--primary);">Adicione seu primeiro ativo</a>!
+      </p>
+    </div>
+  </div>
+  
+  <script src="../js/auth.js"></script>
+  <script src="../js/portfolio.js"></script>
+  <script>
+    function dashboardApp() {
+      return {
+        loading: true,
+        error: null,
+        assetsData: [],
+        stats: {
+          totalAssets: 0,
+          totalValue: 0,
+          lastUpdate: new Date().toLocaleDateString('pt-BR')
+        },
+        
+        async init() {
+          requireAuth();
+          this.loading = true;
+          await this.loadAssetsData();
+          this.calculateStats();
+          this.loading = false;
+          
+          // Aguardar Alpine.js renderizar o canvas
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.createDoughnutChart();
+            }, 100);
+          });
+        },
+        
+        async loadAssetsData() {
+          try {
+            const token = getToken();
+            const response = await fetch('http://localhost:3000/manager/', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              this.assetsData = await response.json();
+              console.log('Ativos carregados:', this.assetsData);
+            } else {
+              console.error('Erro na resposta:', response.status);
+            }
+          } catch (error) {
+            console.error('Erro ao carregar ativos:', error);
+            this.error = 'Erro ao carregar ativos';
+          }
+        },
+        
+        chartCreated: false,
+        
+        createDoughnutChart() {
+          // Evitar criar o gráfico múltiplas vezes
+          if (this.chartCreated) {
+            console.log('Gráfico já foi criado');
+            return;
+          }
+          
+          if (!this.assetsData || this.assetsData.length === 0) {
+            console.log('Nenhum ativo para exibir no gráfico');
+            return;
+          }
+          
+          const canvas = document.getElementById('doughnutChart');
+          if (!canvas) {
+            console.error('Canvas doughnutChart não encontrado');
+            return;
+          }
+          
+          // Agrupar por ticker e calcular valor total por ativo
+          const assetsByTicker = {};
+          this.assetsData.forEach(asset => {
+            const ticker = asset.ticker;
+            // Usar current_value que já vem calculado da API
+            const value = parseFloat(asset.current_value) || 0;
+            
+            if (assetsByTicker[ticker]) {
+              assetsByTicker[ticker] += value;
+            } else {
+              assetsByTicker[ticker] = value;
+            }
+          });
+          
+          const labels = Object.keys(assetsByTicker);
+          const values = Object.values(assetsByTicker);
+          
+          console.log('Criando gráfico com:', labels, values);
+          
+          // Usar a função do portfolio.js
+          if (typeof initPortfolioChart === 'function') {
+            initPortfolioChart(labels, values, 'doughnut', 'doughnutChart');
+            this.chartCreated = true;
+          } else {
+            console.error('initPortfolioChart não está disponível');
+          }
+        },
+        
+        calculateStats() {
+          // Calcular valor total do portfolio
+          let totalValue = 0;
+          
+          if (this.assetsData && this.assetsData.length > 0) {
+            this.assetsData.forEach(asset => {
+              // Usar current_value que já vem calculado da API
+              totalValue += parseFloat(asset.current_value) || 0;
+            });
+          }
+          
+          this.stats = {
+            totalAssets: this.assetsData.length,
+            totalValue: totalValue,
+            lastUpdate: new Date().toLocaleDateString('pt-BR')
+          };
+          
+          console.log('Stats calculadas:', this.stats);
+        },
+        
+        formatCurrency(value) {
+          const numValue = parseFloat(value) || 0;
+          return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          }).format(numValue);
+        },
+        
+        logout() {
+          logout();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

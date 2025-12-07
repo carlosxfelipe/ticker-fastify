@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Ticker</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+</head>
+<body>
+  <div class="auth-container" x-data="loginApp()">
+    <div class="auth-card">
+      <h1 class="auth-title">🎯 Ticker</h1>
+      
+      <div id="message-area"></div>
+      
+      <form 
+        @submit.prevent="submitLogin()"
+      >
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            class="form-input" 
+            required
+            x-model="email"
+            placeholder="seu@email.com"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            class="form-input" 
+            required
+            x-model="password"
+            placeholder="••••••••"
+          >
+        </div>
+        
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          style="width: 100%;"
+          :disabled="loading"
+        >
+          <span x-show="!loading">Entrar</span>
+          <span x-show="loading">Carregando...</span>
+        </button>
+      </form>
+      
+      <div class="auth-link">
+        Não tem uma conta? <a href="register.html">Registre-se</a>
+      </div>
+    </div>
+  </div>
+  
+  <script src="../js/auth.js"></script>
+  <script>
+    function loginApp() {
+      return {
+        email: '',
+        password: '',
+        loading: false,
+        
+        async submitLogin() {
+          this.loading = true;
+          document.getElementById('message-area').innerHTML = '';
+          
+          try {
+            const response = await fetch('http://localhost:3000/accounts/login/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                username: this.email,
+                password: this.password
+              })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok && data.token) {
+              // Salvar token
+              saveToken(data.token);
+              
+              // Mostrar sucesso
+              document.getElementById('message-area').innerHTML = `
+                <div class="alert alert-success">
+                  Login realizado com sucesso! Redirecionando...
+                </div>
+              `;
+              
+              // Redirecionar para dashboard
+              setTimeout(() => {
+                window.location.href = 'dashboard.html';
+              }, 1000);
+            } else {
+              // Erro de login
+              document.getElementById('message-area').innerHTML = `
+                <div class="alert alert-error">
+                  ${data.error || 'Erro ao fazer login'}
+                </div>
+              `;
+            }
+          } catch (error) {
+            console.error('Erro:', error);
+            document.getElementById('message-area').innerHTML = `
+              <div class="alert alert-error">
+                Erro ao processar resposta do servidor
+              </div>
+            `;
+          } finally {
+            this.loading = false;
+          }
+        }
+      }
+    }
+    
+    // Redirecionar se já estiver autenticado
+    if (isAuthenticated()) {
+      window.location.href = 'dashboard.html';
+    }
+  </script>
+</body>
+</html>

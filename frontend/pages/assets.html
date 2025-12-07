@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ativos - Ticker</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
+  <script src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+</head>
+<body x-data="assetsApp()" x-init="init()">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <h1>🎯 Ticker - Ativos</h1>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="assets.html">Ativos</a>
+        <a href="settings.html">Configurações</a>
+        <button @click="logout()" class="btn btn-secondary btn-sm">Sair</button>
+      </nav>
+    </div>
+  </div>
+  
+  <div class="container">
+    <!-- Add/Edit Asset Form -->
+    <div class="card">
+      <h2 class="card-title" x-text="editingAsset ? 'Editar Ativo' : 'Adicionar Novo Ativo'"></h2>
+      
+      <div id="form-message"></div>
+      
+      <form @submit.prevent="saveAsset()">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label class="form-label" for="ticker">Ticker</label>
+            <input 
+              type="text" 
+              id="ticker" 
+              class="form-input" 
+              x-model="form.ticker"
+              required
+              placeholder="Ex: PETR4"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="price">Preço</label>
+            <input 
+              type="number" 
+              step="0.01"
+              min="0"
+              id="price" 
+              class="form-input" 
+              x-model="form.price"
+              required
+              placeholder="0.00"
+            >
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="quantity">Quantidade</label>
+            <input 
+              type="number" 
+              min="0"
+              id="quantity" 
+              class="form-input" 
+              x-model="form.quantity"
+              required
+              placeholder="0"
+            >
+          </div>
+        </div>
+        
+        <div class="actions">
+          <button type="submit" class="btn btn-primary" :disabled="loading">
+            <span x-show="!loading" x-text="editingAsset ? 'Atualizar' : 'Adicionar'"></span>
+            <span x-show="loading">Salvando...</span>
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary" 
+            @click="cancelEdit()" 
+            x-show="editingAsset"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Assets List -->
+    <div class="card">
+      <h2 class="card-title">Meus Ativos</h2>
+      
+      <div x-show="loadingList" class="alert alert-info">
+        Carregando ativos...
+      </div>
+      
+      <div x-show="!loadingList && assets.length === 0" class="alert alert-info">
+        Nenhum ativo cadastrado ainda. Adicione seu primeiro ativo acima!
+      </div>
+      
+      <table class="table" x-show="!loadingList && assets.length > 0">
+        <thead>
+          <tr>
+            <th>Ticker</th>
+            <th>Preço Médio</th>
+            <th>Quantidade</th>
+            <th>Valor Atual</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="asset in assets" :key="asset.id">
+            <tr>
+              <td><strong x-text="asset.ticker"></strong></td>
+              <td x-text="formatCurrency(asset.average_price)"></td>
+              <td x-text="asset.quantity"></td>
+              <td><strong x-text="formatCurrency(asset.current_value)"></strong></td>
+              <td>
+                <div class="actions">
+                  <button 
+                    @click="editAsset(asset)" 
+                    class="btn btn-primary btn-sm"
+                  >
+                    Editar
+                  </button>
+                  <button 
+                    @click="deleteAsset(asset.id)" 
+                    class="btn btn-danger btn-sm"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
+  <script src="../js/auth.js"></script>
+  <script>
+    function assetsApp() {
+      return {
+        assets: [],
+        loading: false,
+        loadingList: true,
+        editingAsset: null,
+        form: {
+          ticker: '',
+          price: '',
+          quantity: '',
+          date: new Date().toISOString().split('T')[0]
+        },
+        
+        async init() {
+          requireAuth();
+          await this.loadAssets();
+        },
+        
+        async loadAssets() {
+          this.loadingList = true;
+          
+          try {
+            const token = getToken();
+            const response = await fetch('http://localhost:3000/manager/', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Erro ao carregar ativos');
+            }
+            
+            this.assets = await response.json();
+          } catch (error) {
+            console.error('Erro:', error);
+            this.showMessage('Erro ao carregar ativos', 'error');
+          } finally {
+            this.loadingList = false;
+          }
+        },
+        
+        async saveAsset() {
+          this.loading = true;
+          this.showMessage('', '');
+          
+          try {
+            const token = getToken();
+            const url = this.editingAsset 
+              ? `http://localhost:3000/manager/edit/${this.editingAsset.id}`
+              : 'http://localhost:3000/manager/create/';
+            
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                ticker: this.form.ticker,
+                average_price: parseFloat(this.form.price),
+                quantity: parseInt(this.form.quantity)
+              })
+            });
+            
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || 'Erro ao salvar ativo');
+            }
+            
+            this.showMessage(
+              this.editingAsset ? 'Ativo atualizado com sucesso!' : 'Ativo adicionado com sucesso!',
+              'success'
+            );
+            
+            this.resetForm();
+            await this.loadAssets();
+          } catch (error) {
+            console.error('Erro:', error);
+            this.showMessage(error.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+        
+        editAsset(asset) {
+          this.editingAsset = asset;
+          this.form = {
+            ticker: asset.ticker,
+            price: asset.average_price,
+            quantity: asset.quantity
+          };
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        
+        async deleteAsset(id) {
+          if (!confirm('Tem certeza que deseja excluir este ativo?')) {
+            return;
+          }
+          
+          try {
+            const token = getToken();
+            const response = await fetch(`http://localhost:3000/manager/delete/${id}`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Erro ao excluir ativo');
+            }
+            
+            this.showMessage('Ativo excluído com sucesso!', 'success');
+            await this.loadAssets();
+          } catch (error) {
+            console.error('Erro:', error);
+            this.showMessage(error.message, 'error');
+          }
+        },
+        
+        cancelEdit() {
+          this.resetForm();
+        },
+        
+        resetForm() {
+          this.editingAsset = null;
+          this.form = {
+            ticker: '',
+            price: '',
+            quantity: ''
+          };
+        },
+        
+        showMessage(message, type) {
+          const messageArea = document.getElementById('form-message');
+          if (!message) {
+            messageArea.innerHTML = '';
+            return;
+          }
+          
+          messageArea.innerHTML = `
+            <div class="alert alert-${type}">
+              ${message}
+            </div>
+          `;
+          
+          if (type === 'success') {
+            setTimeout(() => {
+              messageArea.innerHTML = '';
+            }, 3000);
+          }
+        },
+        
+        formatCurrency(value) {
+          return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+          }).format(value);
+        },
+        
+
+        
+        logout() {
+          logout();
+        }
+      }
+    }
+  </script>
+</body>
+</html>

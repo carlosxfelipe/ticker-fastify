@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar - Ticker</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <script src="https://unpkg.com/alpinejs@3.13.5/dist/cdn.min.js" defer></script>
+</head>
+<body>
+  <div class="auth-container" x-data="registerApp()">
+    <div class="auth-card">
+      <h1 class="auth-title">🎯 Ticker</h1>
+      
+      <div id="message-area"></div>
+      
+      <form 
+        @submit.prevent="submitRegister()"
+      >
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            class="form-input" 
+            required
+            x-model="email"
+            placeholder="seu@email.com"
+          >
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password">Senha</label>
+          <input 
+            type="password" 
+            id="password" 
+            name="password" 
+            class="form-input" 
+            required
+            minlength="6"
+            x-model="password"
+            placeholder="••••••••"
+          >
+          <small style="color: var(--text-light);">Mínimo 6 caracteres</small>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="password_confirmation">Confirmar Senha</label>
+          <input 
+            type="password" 
+            id="password_confirmation" 
+            name="password_confirmation" 
+            class="form-input" 
+            required
+            x-model="password_confirmation"
+            placeholder="••••••••"
+          >
+        </div>
+        
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          style="width: 100%;"
+          :disabled="loading || password !== password_confirmation"
+        >
+          <span x-show="!loading">Registrar</span>
+          <span x-show="loading">Carregando...</span>
+        </button>
+        
+        <div x-show="password && password_confirmation && password !== password_confirmation" class="alert alert-error" style="margin-top: 1rem;">
+          As senhas não coincidem
+        </div>
+      </form>
+      
+      <div class="auth-link">
+        Já tem uma conta? <a href="login.html">Faça login</a>
+      </div>
+    </div>
+  </div>
+  
+  <script src="../js/auth.js"></script>
+  <script>
+    function registerApp() {
+      return {
+        email: '',
+        password: '',
+        password_confirmation: '',
+        loading: false,
+        
+        async submitRegister() {
+          if (this.password !== this.password_confirmation) {
+            document.getElementById('message-area').innerHTML = `
+              <div class="alert alert-error">
+                As senhas não coincidem
+              </div>
+            `;
+            return;
+          }
+          
+          this.loading = true;
+          document.getElementById('message-area').innerHTML = '';
+          
+          try {
+            const response = await fetch('http://localhost:3000/accounts/register/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                email: this.email,
+                password: this.password,
+                password_confirmation: this.password_confirmation
+              })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+              // Mostrar sucesso
+              document.getElementById('message-area').innerHTML = `
+                <div class="alert alert-success">
+                  Conta criada com sucesso! Redirecionando para login...
+                </div>
+              `;
+              
+              // Redirecionar para login
+              setTimeout(() => {
+                window.location.href = 'login.html';
+              }, 2000);
+            } else {
+              // Erro no registro
+              document.getElementById('message-area').innerHTML = `
+                <div class="alert alert-error">
+                  ${data.error || 'Erro ao criar conta'}
+                </div>
+              `;
+            }
+          } catch (error) {
+            console.error('Erro:', error);
+            document.getElementById('message-area').innerHTML = `
+              <div class="alert alert-error">
+                Erro ao processar resposta do servidor
+              </div>
+            `;
+          } finally {
+            this.loading = false;
+          }
+        }
+      }
+    }
+    
+    // Redirecionar se já estiver autenticado
+    if (isAuthenticated()) {
+      window.location.href = 'dashboard.html';
+    }
+  </script>
+</body>
+</html>
